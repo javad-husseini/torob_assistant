@@ -1,0 +1,41 @@
+{
+  "currencies": [
+    "TOMAN"
+  ],
+  "installments": false,
+  "stock": false,
+  "products": 225803,
+  "offers": 331401,
+  "stores": 6476,
+  "issues": [
+    "invalid_or_orphan_offer:105",
+    "invalid_price:13",
+    "invalid_product:100"
+  ],
+  "demo_records": 0,
+  "note": "پرداخت‌های فروشگاه تأیید اقساط کالا نیست؛ موجودی و نقد کاربران موجود نیست. تاریخ فقط زمان تغییر قیمت است.",
+  "categories": 3428,
+  "load_seconds": 30.22,
+  "raw_files": {
+    "offers.csv": {
+      "bytes": 79945479,
+      "sha256": "664d256ed04b37cfb268d89eb605afda4a3b76179324b39d2dbaef21439f09b9"
+    },
+    "products.csv": {
+      "bytes": 196150238,
+      "sha256": "e4a9749529d1e032c1dc2c4e275a8793a1edd702a194cb8de9abafc0649cc9c9"
+    },
+    "shops.csv": {
+      "bytes": 9202900,
+      "sha256": "1a292d6180e2a28cd0bbec57b1bb575a440e5afcc3ec3f5af5b1e13172aebaa1"
+    }
+  },
+  "sample_search": {
+    "query": "لنز سونی",
+    "ids": [
+      "offer_022f8c7e09a7b6a5b70d4a5b",
+      "offer_03405ffdb476215decda433a",
+      "offer_0641a2899e772230da2c3851"
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+﻿{
+  "source": "User-provided Gisoo support sample, 2026-10-22; not live tested",
+  "session_update": {
+    "type": "session.update",
+    "session": {"input_audio_transcription": {"model": "whisper-1"}}
+  },
+  "seller_completed": {
+    "type": "conversation.item.input_audio_transcription.completed",
+    "event_id": "event_123", "item_id": "item_abc", "content_index": 0,
+    "transcript": "سلام، وقت بخیر"
+  }
+}
