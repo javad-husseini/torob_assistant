@@ -68,3 +68,17 @@ def test_static_safety(client):
     assert "script-src 'self'" in r.headers['content-security-policy']
     js=client.get('/static/app.js').text
     assert 'innerHTML' not in js and 'localStorage' not in js and 'MediaRecorder' not in js
+
+
+def test_built_ui_style_nonce_is_per_document(client,tmp_path,monkeypatch):
+    import re
+    ui=tmp_path/'static'/'ui'
+    ui.mkdir(parents=True)
+    (ui/'index.html').write_text('<meta name="csp-nonce" content="__CSP_NONCE__">',encoding='utf-8')
+    monkeypatch.setattr(main,'ROOT',tmp_path)
+    first=client.get('/');second=client.get('/')
+    nonce=re.search(r"'nonce-([^']+)'",first.headers['content-security-policy']).group(1)
+    assert nonce in first.text and '__CSP_NONCE__' not in first.text
+    assert nonce not in second.text
+    assert "script-src 'self'" in first.headers['content-security-policy']
+    assert 'unsafe-inline' not in first.headers['content-security-policy']

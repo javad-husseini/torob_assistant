@@ -1,9 +1,17 @@
+FROM node:22-slim AS ui
+WORKDIR /build/frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
+
 FROM python:3.12-slim
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY app app
 COPY static static
+COPY --from=ui /build/static/ui static/ui
 COPY data data
 COPY dataset dataset
 EXPOSE 8000

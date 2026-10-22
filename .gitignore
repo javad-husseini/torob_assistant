@@ -7,4 +7,10 @@ __pycache__/
 *.pyc
 data/*.private.json
 .pytest_tmp/
+.test-cache/
+.test-tmp/
 /dataset/*.csv
+node_modules/
+*.tsbuildinfo
+/static/ui/
+.ui-preview.*.log

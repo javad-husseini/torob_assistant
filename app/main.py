@@ -5,7 +5,7 @@ from pathlib import Path
 from uuid import uuid4
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, WebSocket, HTTPException, Depends
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from .catalog import Catalog
 from .csv_catalog import CsvCatalog
@@ -54,10 +54,11 @@ async def bounds(request:Request,call_next):
     user=request.cookies.get('torob_session','')
     if len(user)!=64 or any(c not in '0123456789abcdef' for c in user): user=secrets.token_hex(32)
     request.state.user=user
+    request.state.style_nonce=secrets.token_urlsafe(18)
     response=await call_next(request)
     response.set_cookie('torob_session',user,httponly=True,samesite='strict',secure=os.getenv('COOKIE_SECURE')=='true',max_age=3600)
     response.headers['X-Content-Type-Options']='nosniff'
-    response.headers['Content-Security-Policy']="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; media-src 'self' blob:; object-src 'none'; frame-ancestors 'none'"
+    response.headers['Content-Security-Policy']=f"default-src 'self'; script-src 'self'; style-src 'self' 'nonce-{request.state.style_nonce}'; connect-src 'self'; media-src 'self' blob:; object-src 'none'; frame-ancestors 'none'"
     response.headers['Referrer-Policy']='no-referrer'
     response.headers['Cache-Control']='no-store'
     return response
@@ -89,7 +90,11 @@ def cleanup():
 
 
 @app.get('/')
-def home(): return FileResponse(ROOT/'static/index.html')
+def home(request:Request):
+    built_ui=ROOT/'static/ui/index.html'
+    if built_ui.is_file():
+        return HTMLResponse(built_ui.read_text(encoding='utf-8').replace('__CSP_NONCE__',request.state.style_nonce))
+    return FileResponse(ROOT/'static/index.html')
 
 
 @app.get('/health')
