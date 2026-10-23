@@ -5,6 +5,8 @@ import { fileURLToPath, URL } from "node:url";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // Tailwind runs through Vite; do not inherit another project's PostCSS config.
+  css: { postcss: { plugins: [] } },
   resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
   base: "/static/ui/",
   build: { outDir: "../static/ui", emptyOutDir: true },
