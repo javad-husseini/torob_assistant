@@ -9,6 +9,7 @@ data/*.private.json
 .pytest_tmp/
 .test-cache/
 .test-tmp/
+.test-tmp-*/
 /dataset/*.csv
 node_modules/
 *.tsbuildinfo

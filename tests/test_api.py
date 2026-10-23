@@ -4,6 +4,19 @@ from app import main
 from app.calls import Call
 from app.models import CallRequest
 
+
+def test_voice_test_mode_requires_opt_in_and_loopback(monkeypatch):
+    from starlette.requests import Request
+    def request(client_host, host):
+        return Request({'type':'http','scheme':'http','path':'/api/config',
+            'headers':[(b'host',host.encode())], 'client':(client_host,1234), 'server':('127.0.0.1',8000)})
+    monkeypatch.delenv('GISOO_LOCAL_TEST_MODE',raising=False)
+    assert not main.local_voice_test(request('127.0.0.1','localhost:8000'))
+    monkeypatch.setenv('GISOO_LOCAL_TEST_MODE','true')
+    assert main.local_voice_test(request('127.0.0.1','127.0.0.1:8000'))
+    assert not main.local_voice_test(request('192.0.2.1','localhost:8000'))
+    assert not main.local_voice_test(request('127.0.0.1','public.example'))
+
 @pytest.fixture
 def client(catalog,monkeypatch):
     monkeypatch.setattr(main,'catalog',catalog);main.calls.clear();main.feedback.clear()
@@ -82,3 +95,46 @@ def test_built_ui_style_nonce_is_per_document(client,tmp_path,monkeypatch):
     assert nonce not in second.text
     assert "script-src 'self'" in first.headers['content-security-policy']
     assert 'unsafe-inline' not in first.headers['content-security-policy']
+
+
+def test_map_config_only_exposes_explicit_public_web_key(client,monkeypatch):
+    monkeypatch.setenv('NESHAN_MAP_API_KEY','test-public-domain-restricted-web-key')
+    monkeypatch.setenv('GISOO_API_KEY','test-private-gisoo-secret')
+    monkeypatch.setenv('BOXAPI_API_KEY','test-private-boxapi-secret')
+    general=client.get('/api/config')
+    assert general.json()['map_configured'] is True
+    assert 'test-public-domain-restricted-web-key' not in general.text
+    result=client.get('/api/maps/config')
+    assert result.json()=={'api_key':'test-public-domain-restricted-web-key'}
+    for response in (general,result):
+        assert 'test-private-gisoo-secret' not in response.text
+        assert 'test-private-boxapi-secret' not in response.text
+        assert response.headers['cache-control']=='no-store'
+    csp=result.headers['content-security-policy']
+    assert "connect-src 'self' https://*.neshan.org;" in csp
+    assert "script-src 'self';" in csp and 'unsafe-inline' not in csp
+    assert "style-src-attr 'unsafe-hashes'" in csp
+    assert all(f"'{h}'" in csp for h in main.NESHAN_STYLE_HASHES)
+    assert result.headers['referrer-policy']=='strict-origin-when-cross-origin'
+
+
+def test_missing_map_key_does_not_prevent_shopping(client,monkeypatch):
+    monkeypatch.delenv('NESHAN_MAP_API_KEY',raising=False)
+    assert client.get('/api/config').json()['map_configured'] is False
+    result=client.get('/api/maps/config')
+    assert result.status_code==503
+    assert 'https://*.neshan.org' not in result.headers['content-security-policy']
+    assert result.headers['referrer-policy']=='no-referrer'
+    assert client.post('/api/chat',json={'query':'سونی'}).json()['items']
+
+
+def test_private_service_map_key_is_never_exposed(client,monkeypatch):
+    key='service.private-test-value'
+    monkeypatch.setenv('NESHAN_MAP_API_KEY',key)
+    config=client.get('/api/config')
+    response=client.get('/api/maps/config')
+    assert config.json()['map_configured'] is False
+    assert response.status_code==503
+    assert key not in config.text and key not in response.text
+    assert 'https://*.neshan.org' not in response.headers['content-security-policy']
+    assert 'https://image.torob.com' in response.headers['content-security-policy']

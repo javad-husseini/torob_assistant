@@ -6,10 +6,17 @@ from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from .catalog import Catalog, rephrase
-from .models import Product, Store, normalize
+from .models import Product, Store, normalize, safe_product_image
 
 
 def value(v): return v if isinstance(v,str) and v.strip() and v.strip()!='null' else None
+
+
+def product_image(row):
+    try: urls=json.loads(row.get('image_urls','null'))
+    except (ValueError,TypeError): return None
+    if not isinstance(urls,list): return None
+    return next((safe for url in urls[:20] if (safe:=safe_product_image(url))),None)
 
 
 def attributes(row):
@@ -37,10 +44,10 @@ class ListingMap(Mapping):
     def __iter__(self):
         return (r[0] for r in self.catalog.db.execute('SELECT id FROM offers ORDER BY id'))
     def __getitem__(self,key):
-        row=self.catalog.db.execute('SELECT o.*,p.name,p.category,p.attributes FROM offers o JOIN products p ON p.id=o.pid WHERE o.id=?',(key,)).fetchone()
+        row=self.catalog.db.execute('SELECT o.*,p.name,p.category,p.attributes,p.image_url FROM offers o JOIN products p ON p.id=o.pid WHERE o.id=?',(key,)).fetchone()
         if not row: raise KeyError(key)
         return Product(id=row['id'],product_id=row['pid'],name=row['name'],category=row['category'],source='dataset/offers.csv:'+row['id'],
-            store_id=row['sid'],attributes=json.loads(row['attributes']),price=row['price'],currency='TOMAN' if row['price'] else None,updated_at=row['changed'])
+            store_id=row['sid'],attributes=json.loads(row['attributes']),price=row['price'],currency='TOMAN' if row['price'] else None,updated_at=row['changed'],image_url=row['image_url'])
     def __contains__(self,key): return self.catalog.db.execute('SELECT 1 FROM offers WHERE id=?',(key,)).fetchone() is not None
 
 
@@ -50,7 +57,7 @@ class CsvCatalog(Catalog):
         self.stale_days=stale_days;self.issues=[];self.stores={};self.count=0
         self.db=sqlite3.connect(':memory:',check_same_thread=False)
         self.db.row_factory=sqlite3.Row
-        self.db.executescript('CREATE TABLE products(id TEXT PRIMARY KEY,name TEXT,category TEXT,attributes TEXT,nname TEXT,ncat TEXT,search TEXT); CREATE TABLE offers(id TEXT PRIMARY KEY,pid TEXT,sid TEXT,price TEXT,changed TEXT);')
+        self.db.executescript('CREATE TABLE products(id TEXT PRIMARY KEY,name TEXT,category TEXT,attributes TEXT,nname TEXT,ncat TEXT,search TEXT,image_url TEXT); CREATE TABLE offers(id TEXT PRIMARY KEY,pid TEXT,sid TEXT,price TEXT,changed TEXT);')
         directory=Path(path);stats=Counter();brands=Counter()
         def rows(name,required):
             f=(directory/name).open(encoding='utf-8-sig',newline='')
@@ -63,7 +70,9 @@ class CsvCatalog(Catalog):
             seen_stores=set()
             for row in rows('shops.csv',{'shop_id','name'}):
                 try:
-                    s=Store(id=row['shop_id'],name=row['name'],source='dataset/shops.csv:'+row['shop_id'])
+                    s=Store(id=row['shop_id'],name=row['name'],source='dataset/shops.csv:'+row['shop_id'],
+                        address=row.get('address'),location_label=row.get('location_label'),
+                        location={'latitude':row.get('lat'),'longitude':row.get('lon')})
                     if s.id in seen_stores:
                         stats['duplicate_store']+=1;self.stores.pop(s.id,None);continue
                     seen_stores.add(s.id)
@@ -76,10 +85,10 @@ class CsvCatalog(Catalog):
                     stats['invalid_product']+=1;continue
                 attrs=attributes(row)
                 if 'برند' in attrs: brands[attrs['برند']]+=1
-                batch.append((pid,name,cat,json.dumps(attrs,ensure_ascii=False),normalize(name),normalize(cat),normalize(' '.join([name,cat,*attrs.values()]))))
+                batch.append((pid,name,cat,json.dumps(attrs,ensure_ascii=False),normalize(name),normalize(cat),normalize(' '.join([name,cat,*attrs.values()])),product_image(row)))
                 if len(batch)>=1000:
-                    self.db.executemany('INSERT INTO products VALUES(?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=NULL',batch);batch=[]
-            self.db.executemany('INSERT INTO products VALUES(?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=NULL',batch)
+                    self.db.executemany('INSERT INTO products VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=NULL',batch);batch=[]
+            self.db.executemany('INSERT INTO products VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=NULL',batch)
             stats['conflicting_product_ids']=self.db.execute('SELECT COUNT(*) FROM products WHERE name IS NULL').fetchone()[0]
             self.db.execute('DELETE FROM products WHERE name IS NULL')
             product_ids={r[0] for r in self.db.execute('SELECT id FROM products')}
@@ -164,6 +173,6 @@ class CsvCatalog(Catalog):
         items=[]
         for hit in self.db.execute(sql,score_params+params+[intent.limit]).fetchall():
             row=self.effective(self.products[hit['id']]);row['score']=hit['score']+10*len(intent.attributes)
-            row['why']='تطبیق تمام واژه‌ها و فیلترها با دادهٔ محصول؛ امتیاز ثابت و ترتیب شناسهٔ پیشنهاد.'
+            row['why']='مطابق جست‌وجو و ویژگی‌های انتخابی شما.'
             items.append(row)
-        return {'state':'results' if items else 'empty','message':'اطلاعات از دیتاست است؛ قیمت ثبت‌شده و زمان تغییر آن، تضمین قیمت یا موجودی امروز نیست.' if items else 'با حفظ تمام محدودیت‌ها نتیجه‌ای یافت نشد.','items':items}
+        return {'state':'results' if items else 'empty','message':'محصولات پیشنهادی را ببینید و گزینهٔ موردنظرتان را انتخاب کنید.' if items else 'محصولی با این مشخصات پیدا نشد. می‌توانید ویژگی‌ها یا محدودیت‌های جست‌وجو را تغییر دهید.','items':items}

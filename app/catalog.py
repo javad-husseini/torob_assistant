@@ -118,10 +118,10 @@ class Catalog:
             if not all(t in hay for t in tokens): continue
             score=(100 if q and q==name else 0)+(40 if q and q in name else 0)+(20 if q and q==cat else 0)+sum(5 for t in tokens if t in name)+10*len(intent.attributes)
             row['score']=score
-            row['why']='تطبیق تمام واژه‌ها و فیلترهای انتخابی؛ ترتیب ثابت بر اساس امتیاز و شناسه.'
+            row['why']='مطابق جست‌وجو و ویژگی‌های انتخابی شما.'
             matches.append(row)
         matches.sort(key=lambda r:(-r['score'],r['id']))
-        return {'state':'results' if matches else 'empty','message':'نتایج فقط از دادهٔ ثبت‌شده هستند؛ قیمت و موجودی تضمین نشده است.' if matches else 'نتیجه‌ای با همین محدودیت‌ها نیست. می‌توانید یک فیلتر را تغییر دهید.','items':matches[:intent.limit]}
+        return {'state':'results' if matches else 'empty','message':'محصولات پیشنهادی را ببینید و گزینهٔ موردنظرتان را انتخاب کنید.' if matches else 'محصولی با این مشخصات پیدا نشد. می‌توانید ویژگی‌ها یا محدودیت‌های جست‌وجو را تغییر دهید.','items':matches[:intent.limit]}
 
     def compare(self, ids):
         rows=[self.effective(self.products[i]) for i in ids]

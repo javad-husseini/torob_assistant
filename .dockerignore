@@ -11,3 +11,4 @@ static/ui
 .pytest_tmp
 .test-cache
 .test-tmp
+.test-tmp-*

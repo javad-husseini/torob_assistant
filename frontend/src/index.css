@@ -804,3 +804,477 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Each store address stays beside its own product; maps load only on request. */
+.product-grid.location-results {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.product-location-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 14px;
+  min-width: 0;
+}
+.store-location-card {
+  min-width: 0;
+}
+.store-location-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.store-location-emblem {
+  @apply flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/7 text-primary;
+}
+.store-location-emblem svg {
+  width: 18px;
+  height: 18px;
+}
+.store-location-heading [data-slot="card-title"] {
+  font-size: 12px;
+  line-height: 1.9;
+}
+.store-location-name {
+  margin-top: 3px;
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+.store-location-details {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.store-location-label {
+  @apply text-xs font-medium;
+  overflow-wrap: anywhere;
+}
+.store-location-address {
+  font-size: 11px;
+  line-height: 2;
+  font-style: normal;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.store-location-note {
+  @apply text-[10px] leading-5 text-muted-foreground;
+}
+.store-map-mobile-trigger {
+  display: none;
+}
+.store-map-shell {
+  position: relative;
+  min-width: 0;
+}
+.store-map {
+  width: 100%;
+  height: 260px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--muted);
+  direction: ltr;
+}
+.store-map canvas:focus-visible {
+  outline-offset: -4px;
+}
+.store-map-message {
+  @apply flex flex-col items-center justify-center gap-3 rounded-xl border border-border bg-muted/80 px-4 py-7 text-center text-xs text-muted-foreground;
+  min-height: 180px;
+}
+.store-map-loading {
+  @apply absolute inset-x-3 top-3 flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-[10px] text-muted-foreground shadow-sm;
+  pointer-events: none;
+}
+.store-map-caption {
+  @apply mt-2 text-[10px] leading-5 text-muted-foreground;
+}
+.store-map-marker {
+  background: transparent;
+  border: 0;
+}
+.store-map-marker > span {
+  display: block;
+  width: 26px;
+  height: 26px;
+  border: 3px solid white;
+  border-radius: 50% 50% 50% 0;
+  background: #d72d39;
+  box-shadow: 0 2px 7px rgb(0 0 0 / 25%);
+  transform: rotate(-45deg);
+}
+@media (max-width: 1390px) {
+  .product-grid.location-results {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 760px) {
+  .product-location-pair {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .store-location-card[data-open="false"] .store-location-details {
+    display: none;
+  }
+  .store-map-desktop-trigger {
+    display: none;
+  }
+  .store-map-mobile-trigger {
+    display: inline-flex;
+  }
+  .store-map {
+    height: 280px;
+  }
+}
+
+/* The shopping assistant stays in one thread, including every rich component. */
+.chat-app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  min-height: 420px;
+  overflow: hidden;
+}
+.chat-topbar {
+  @apply shrink-0 border-b border-border bg-card;
+}
+.chat-topbar-inner {
+  @apply flex items-center justify-between gap-4;
+  width: min(1160px, 100%);
+  min-height: 78px;
+  padding: 12px 28px;
+  margin-inline: auto;
+}
+.chat-brand {
+  @apply flex shrink-0 items-center gap-2.5 no-underline;
+}
+.chat-brand-mark {
+  @apply flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground;
+}
+.chat-brand-mark svg {
+  width: 25px;
+  height: 25px;
+}
+.chat-brand strong {
+  @apply block text-xl font-extrabold leading-7 text-primary;
+}
+.chat-brand small {
+  @apply block text-[10px] text-muted-foreground;
+}
+.chat-topbar-actions {
+  @apply flex items-center gap-1.5;
+}
+.chat-model-status {
+  @apply me-3 gap-1.5;
+}
+.chat-model-status > span {
+  @apply size-1.5 rounded-full bg-muted-foreground;
+}
+.chat-model-status > span[data-ready="true"] {
+  @apply bg-primary;
+}
+.chat-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: min(1080px, 100%);
+  min-height: 0;
+  margin-inline: auto;
+  padding-inline: 28px;
+}
+.chat-stage-nav {
+  @apply shrink-0 py-5;
+}
+.chat-stage-nav ol {
+  @apply m-0 grid list-none grid-cols-4 gap-3 p-0;
+}
+.chat-stage-nav li {
+  @apply flex items-center gap-2.5 rounded-xl border border-border/80 bg-card px-3 py-3 text-xs text-muted-foreground;
+}
+.chat-stage-nav li[data-state="active"] {
+  @apply border-primary/30 bg-accent text-accent-foreground;
+}
+.chat-stage-nav li[data-state="complete"] {
+  @apply text-foreground;
+}
+.chat-stage-number {
+  @apply flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold;
+}
+.chat-stage-nav li[data-state="active"] .chat-stage-number {
+  @apply bg-primary text-primary-foreground;
+}
+.chat-stage-nav li[data-state="complete"] .chat-stage-number {
+  @apply bg-accent text-primary;
+}
+.chat-stage-number svg {
+  width: 15px;
+  height: 15px;
+}
+.chat-notice {
+  @apply mb-3 shrink-0;
+}
+.chat-notice > [data-slot="button"] {
+  position: absolute;
+  top: 8px;
+  inset-inline-end: 8px;
+}
+.chat-loading {
+  @apply flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-3 py-12;
+}
+.assistant-thread {
+  min-height: 0;
+  flex: 1;
+}
+.assistant-thread-content {
+  padding: 18px 2px 28px;
+  gap: 28px;
+}
+.chat-avatar {
+  @apply size-9 min-w-9 self-start rounded-xl bg-card;
+}
+.chat-avatar svg {
+  @apply size-4 text-primary;
+}
+.chat-message-text {
+  white-space: pre-wrap;
+  line-height: 2.1;
+  overflow-wrap: anywhere;
+}
+.chat-carousel {
+  display: flex;
+  align-items: stretch;
+  gap: 14px;
+  width: 100%;
+  min-width: 0;
+  padding-block: 8px 14px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.chat-carousel > * {
+  flex: 0 0 286px;
+  scroll-snap-align: start;
+}
+.chat-carousel > .chat-store-offer {
+  flex-basis: 552px;
+}
+.chat-product-card {
+  min-width: 0;
+}
+.chat-product-card [data-slot="card-title"] {
+  min-height: 45px;
+}
+.chat-product-placeholder {
+  @apply flex flex-col items-center justify-center gap-2 rounded-xl bg-muted/60 text-muted-foreground/60;
+  height: 105px;
+}
+.chat-product-placeholder svg {
+  width: 43px;
+  height: 43px;
+}
+.chat-product-placeholder span {
+  font-size: 9px;
+}
+.chat-store-offer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  min-width: 0;
+}
+.chat-offer-card {
+  min-width: 0;
+}
+.chat-offer-card[data-selected="true"] {
+  border-color: var(--primary);
+}
+.chat-offer-card [data-slot="card-title"] {
+  min-height: 24px;
+}
+.chat-offer-card [data-slot="card-description"] {
+  min-height: 48px;
+}
+.route-facts {
+  @apply flex flex-col gap-1 rounded-xl bg-muted px-3 py-2.5;
+}
+.route-facts strong {
+  @apply text-lg font-semibold;
+}
+.route-facts span {
+  @apply text-base text-muted-foreground;
+}
+.store-location-embedded {
+  min-width: 0;
+  border-top: 1px solid var(--border);
+  padding-block: 16px;
+}
+.chat-quick-replies {
+  @apply flex flex-wrap gap-2 pt-1;
+}
+.chat-comparison-actions {
+  @apply flex flex-wrap items-center justify-between gap-2;
+}
+.inline-comparison {
+  min-width: 0;
+}
+.inline-comparison [data-slot="table-cell"] {
+  max-width: 230px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.inline-comparison [data-slot="table-head"] {
+  min-width: 180px;
+}
+.inline-comparison [data-slot="table-head"]:first-child {
+  min-width: 110px;
+}
+.inline-inquiry .conversation {
+  margin-block: 0;
+  height: 260px;
+}
+.chat-working {
+  @apply inline-flex items-center gap-2 text-xs text-muted-foreground;
+}
+.location-picker {
+  max-width: 720px;
+}
+.location-picker-map {
+  height: 330px;
+}
+.chat-composer-wrap {
+  @apply shrink-0 bg-background pb-3 pt-2;
+}
+.chat-composer {
+  @apply rounded-2xl bg-card;
+}
+.chat-composer [data-slot="input-group"] {
+  border-radius: 16px;
+  min-height: 78px;
+  padding-inline: 5px;
+}
+.chat-composer [data-slot="input-group-control"] {
+  min-height: 76px;
+  max-height: 160px;
+  padding: 16px;
+  line-height: 1.8;
+}
+.chat-composer [data-slot="input-group-addon"] {
+  align-self: flex-end;
+  padding-bottom: 13px;
+}
+.chat-composer-note {
+  @apply mt-2 text-center text-[10px] leading-5 text-muted-foreground;
+}
+.chat-error {
+  @apply mb-3;
+}
+.chat-back-action {
+  @apply mb-1 flex justify-start;
+}
+@media (max-width: 760px) {
+  .chat-topbar-inner {
+    min-height: 68px;
+    padding: 10px 16px;
+    gap: 10px;
+  }
+  .chat-brand-mark {
+    width: 37px;
+    height: 37px;
+  }
+  .chat-brand strong {
+    font-size: 18px;
+  }
+  .chat-brand small {
+    font-size: 8px;
+  }
+  .chat-model-status {
+    display: none;
+  }
+  .chat-topbar-actions {
+    gap: 0;
+  }
+  .new-chat-label {
+    display: none;
+  }
+  .chat-topbar-actions > [data-slot="button"]:last-child {
+    padding-inline: 11px;
+  }
+  .chat-topbar-actions > [data-slot="button"]:last-child svg {
+    margin: 0;
+  }
+  .chat-main {
+    padding-inline: 14px;
+  }
+  .chat-stage-nav {
+    padding-block: 12px;
+  }
+  .chat-stage-nav ol {
+    gap: 5px;
+  }
+  .chat-stage-nav li {
+    flex-direction: column;
+    gap: 5px;
+    padding: 8px 4px;
+    text-align: center;
+    font-size: 9px;
+    line-height: 1.7;
+  }
+  .chat-stage-number {
+    width: 23px;
+    height: 23px;
+    font-size: 10px;
+  }
+  .assistant-thread-content {
+    padding-block: 12px 20px;
+    gap: 22px;
+  }
+  .chat-avatar {
+    width: 26px;
+    height: 26px;
+    min-width: 26px;
+    border-radius: 9px;
+  }
+  .chat-avatar svg {
+    width: 13px;
+    height: 13px;
+  }
+  .chat-carousel {
+    gap: 10px;
+  }
+  .chat-carousel > * {
+    flex-basis: min(278px, calc(100vw - 78px));
+  }
+  .chat-carousel > .chat-store-offer {
+    flex-basis: min(310px, calc(100vw - 78px));
+  }
+  .chat-store-offer {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+  .chat-message-text {
+    font-size: 12px;
+  }
+  .chat-composer [data-slot="input-group-control"] {
+    font-size: 12px;
+    padding: 14px 11px;
+    min-height: 68px;
+  }
+  .chat-composer [data-slot="input-group"] {
+    min-height: 70px;
+  }
+  .chat-composer [data-slot="input-group-addon"] {
+    padding-bottom: 10px;
+  }
+  .chat-composer-note {
+    font-size: 9px;
+    margin-top: 6px;
+  }
+  .chat-composer-wrap {
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+  .location-picker-map {
+    height: 310px;
+  }
+}

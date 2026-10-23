@@ -3,7 +3,8 @@ import re, unicodedata
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Literal
-from pydantic import BaseModel, ConfigDict, Field, field_validator, field_serializer, model_validator
+from urllib.parse import urlsplit
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, field_serializer, model_validator
 
 
 def normalize(value: str) -> str:
@@ -17,11 +18,63 @@ class Strict(BaseModel):
     model_config = ConfigDict(extra='forbid', str_strip_whitespace=True, allow_inf_nan=False)
 
 
+def safe_product_image(value):
+    if not isinstance(value,str) or len(value)>2000:
+        return None
+    try:
+        url=urlsplit(value.strip())
+        if (url.scheme!='https' or url.hostname!='image.torob.com' or
+                url.port not in (None,443) or url.username or url.password or url.fragment or
+                not url.path.startswith('/base/images/')):
+            return None
+    except ValueError:
+        return None
+    return value.strip()
+
+
+class StoreLocation(Strict):
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+
+    @field_validator('latitude', 'longitude', mode='before')
+    @classmethod
+    def numeric_coordinate(cls, value):
+        if isinstance(value, bool):
+            raise ValueError('coordinate must be numeric')
+        return value
+
+
 class Store(Strict):
     id: str = Field(min_length=1, max_length=100)
     name: str = Field(min_length=1, max_length=200)
     source: str = Field(min_length=1, max_length=500)
     demo: bool = False
+    address: str | None = Field(default=None, max_length=1000)
+    location_label: str | None = Field(default=None, max_length=200)
+    location: StoreLocation | None = None
+
+    @field_validator('address', 'location_label', mode='before')
+    @classmethod
+    def optional_text(cls, value, info):
+        # Optional dataset facts must never invalidate an otherwise valid shop.
+        if not isinstance(value, str):
+            return None
+        value = ''.join(c for c in value if c.isspace() or not unicodedata.category(c).startswith('C') or c == '\u200c')
+        value = ' '.join(value.split())
+        maximum = 1000 if info.field_name == 'address' else 200
+        if not value or value.casefold() == 'null' or len(value) > maximum:
+            return None
+        return value
+
+    @field_validator('location', mode='before')
+    @classmethod
+    def optional_location(cls, value):
+        if value is None:
+            return None
+        try:
+            return StoreLocation.model_validate(value)
+        except (ValidationError, TypeError, ValueError):
+            return None
 
 
 class Product(Strict):
@@ -38,6 +91,12 @@ class Product(Strict):
     installments: Literal['yes', 'no', 'unknown'] = 'unknown'
     updated_at: datetime | None = None
     demo: bool = False
+    image_url: str | None = None
+
+    @field_validator('image_url',mode='before')
+    @classmethod
+    def validated_image(cls,value):
+        return safe_product_image(value)
 
     @field_validator('attributes')
     @classmethod

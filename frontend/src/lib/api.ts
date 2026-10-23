@@ -3,23 +3,45 @@ export interface Product {
   id: string;
   product_id?: string | null;
   name: string;
+  image_url?: string | null;
   category: string;
   attributes: Record<string, string>;
   price: string | number | null;
   currency: "TOMAN" | "IRR" | null;
   stock: Stock;
   installments: "yes" | "no" | "unknown";
-  store: { id: string; name: string } | null;
+  store: {
+    id: string;
+    name: string;
+    address?: string | null;
+    location_label?: string | null;
+    location?: { latitude: number; longitude: number } | null;
+  } | null;
   call_eligible: boolean;
   recorded_price?: string | null;
   updated_at: string | null;
   why: string;
   demo: boolean;
+  offer_count?: number;
+  recommendation_reason?: string | null;
+  route?: {
+    status: string;
+    distance_meters: number | null;
+    duration_seconds: number | null;
+    mode: "car" | "pedestrian";
+    source: "neshan";
+    fetched_at?: string | null;
+  };
 }
 export interface Config {
   csrf_token: string;
   call_configured: boolean;
   call_missing: string[];
+  map_configured: boolean;
+  chat_configured: boolean;
+  chat_missing: string[];
+  routing_configured: boolean;
+  travel_modes: ("car" | "pedestrian")[];
   coverage: {
     products: number;
     offers?: number;
@@ -83,7 +105,7 @@ export function makeApi(config: () => Config | null): Api {
         typeof data.detail === "string"
           ? data.detail
           : response.status === 503
-            ? "دموی تماس هنوز آماده نیست. تنظیمات سرویس باید تکمیل شود."
+            ? "این بخش فعلاً در دسترس نیست. لطفاً کمی بعد دوباره تلاش کنید."
             : response.status === 422
               ? "ورودی نامعتبر است؛ مبلغ، واحد و محدودیت‌ها را بررسی کنید."
               : `درخواست انجام نشد (${response.status})`,

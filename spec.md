@@ -1,6 +1,6 @@
 # Torob In-Person Shopping Assistant --- Unified MVP Spec
 
-**Version:** 1.1 user-approved extraction amendment \| **Date:** 2026-10-22\
+**Version:** 1.3 user-approved shopping-chat amendment \| **Date:** 2026-10-23\
 **Status:** Scope agreed; repository inspection and live-provider tests
 pending.
 
@@ -20,6 +20,52 @@ separate visit/purchase feedback, Gisoo browser call demo, tests/docs.
 Excluded: PSTN/real outbound calls, retailer discovery, location search,
 multi-store calling/comparison, order/payment, audio archiving,
 unconfigured external services, and actual deployment.
+
+User-approved store-map amendment (2026-10-23): display each offer's actual
+store address and dataset coordinates in an adjacent card. Use Neshan's
+official Leaflet SDK for an interactive map with pan, zoom and a store pin.
+On mobile, open the card via “نمایش موقعیت”; load the map only after an
+explicit map-button click. Read the domain-restricted public WEB SDK key
+from backend `NESHAN_MAP_API_KEY` and return only that public map key to
+the browser on demand. AI/server-service keys remain backend-only.
+No geocoding, Map Matching, user geolocation, directions or location search
+is added. Invalid or missing locations remain unknown. Test with local
+mocks; live map requests may consume Neshan quota and are not part of the
+default verification. The user explicitly approved Leaflet over the
+MapLibre SDK after its affected dependency was identified.
+
+User-approved four-stage chat amendment (2026-10-23), superseding earlier
+conflicting UI, BoxAPI-only-extraction and routing exclusions:
+
+User-approved voice-turn amendment (2026-10-23): use half-duplex turns.
+Disable browser microphone tracks and audio forwarding during assistant output;
+enable seller capture only after generation and all playback acknowledgements
+complete, with a short speaker-tail delay. Disable server interruption in this
+mode. This supersedes the earlier requirement to interrupt assistant playback.
+Keep transcript integrity, evidence validation and question limits unchanged.
+
+- BoxAPI `gpt-6-luna` is approved for shopping dialogue too, configured
+  as `BOXAPI_CHAT_MODEL` with the existing backend-only BoxAPI key.
+- Centered chat with four stages at the top: discover a suitable product,
+  recommend stores for that exact product using a confirmed user pin,
+  compare those stores, and gather information through the Gisoo browser
+  demo. Explicit model requests skip unnecessary needs discovery.
+- Product/store horizontal carousels, maps, comparison tables and inquiry
+  controls are predefined React/shadcn components inside messages, never
+  generated HTML/code. All product/store facts and IDs remain server-owned.
+- Only a user-placed pin supplies location; no device geolocation. The
+  user selects car or walking inside chat. Actual Neshan route estimates
+  use private `NESHAN_ROUTING_API_KEY`, not the public web map key. Check
+  at most six candidate destinations; never claim globally nearest or
+  replace unknown route metrics with straight-line values.
+- Preserve prior mandatory filters and request confirmation before
+  relaxing/removing them. Keep product IDs, variants and used/imitation
+  items distinct. Only offers for the selected product can be compared.
+- Conversations remain owner-scoped in development memory for one hour.
+  Idempotent request IDs prevent duplicate paid work. Preserve reported
+  usage/cost even for invalid model output; no invented costs or currency.
+- Paid tests require separate approval. Gisoo remains the live audio
+  provider; BoxAPI still never enters the live audio conversation path.
 
 ## 2. General implementation rules
 
@@ -83,8 +129,15 @@ unconfigured external services, and actual deployment.
 -   UI: Persian RTL, responsive/mobile, accessible keyboard/focus/touch
     targets, readable typography; home/chat, suggested prompts, cards,
     filters, comparison, "why this result",
-    empty/loading/error/unsupported/incomplete states. Use neutral image
-    placeholders, never generated images as real products.
+    empty/loading/error/unsupported/incomplete states. Display validated HTTPS
+    product images from the same dataset record on image.torob.com, loaded lazily;
+    use neutral placeholders for missing or failed images. Never use generated
+    images as real products.
+-   Customer-facing copy must use plain shopping language. Do not mention the
+    dataset, AI model, API providers, keys, backend setup, token usage or internal
+    diagnostics in the interface or assistant replies. Keep necessary privacy,
+    unavailable-information and simulated-call disclosures in customer language.
+    Omit the persistent dataset/price disclaimer beneath the chat composer.
 -   Feedback: separate optional post-visit (no purchase required) and
     post-purchase (only after user says they bought). Explain purpose,
     get consent, avoid unnecessary personal data, sanitize text,

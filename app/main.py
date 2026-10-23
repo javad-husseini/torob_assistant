@@ -11,11 +11,25 @@ from .catalog import Catalog
 from .csv_catalog import CsvCatalog
 from .models import Intent, Compare, Feedback, CallRequest
 from .calls import Call, GisooAdapter, configuration
+from .assistant import AssistantService, AssistantError, TurnRequest
+from .chat_model import missing_configuration as chat_missing_configuration
 
 load_dotenv()
 ROOT=Path(__file__).resolve().parent.parent
+# Exact inline logo/attribution styles in the pinned Neshan Leaflet SDK 1.0.8.
+# Permit only these attributes; scripts and other inline styles stay restricted.
+NESHAN_STYLE_HASHES=(
+    'sha256-5eFVyfFwr074KcVAzEHSs2kl1TWdHXRpnEG0unpnYjU=',
+    'sha256-9Y54nwDOBSsHe7FLiS01miUkGv1TiFObqrLr7AAVJEY=',
+    'sha256-IXyJf25ln7kSZkAYk4RKEo9SuXSTeznaAR1ZVbYdb6o=',
+    'sha256-kd8b17bHD2AL0rcya3Hpoc88GUZ4gfTt0xBdaUvLI5I=',
+    'sha256-e2OgKFuX8y1YEPjsnzP109aFT3D00MBMZm6iV+Bm5iA=',
+)
 data_path=os.getenv('DATASET_PATH',str(ROOT/'dataset'))
 catalog=(CsvCatalog if Path(data_path).is_dir() else Catalog)(data_path,int(os.getenv('DATA_STALE_DAYS','30')))
+# User approved an explicit car/walking choice inside the chat (no default pin mode).
+approved_modes=('car','pedestrian')
+shopping_assistant=AssistantService(catalog,modes=approved_modes)
 @asynccontextmanager
 async def lifespan(app):
     async def sweep():
@@ -38,6 +52,20 @@ calls={};feedback={}
 def token(user): return hmac.new(SECRET,user.encode(),hashlib.sha256).hexdigest()
 
 
+def map_api_key():
+    # A domain-restricted PUBLIC web-map key, never an AI/server-service key.
+    key=os.getenv('NESHAN_MAP_API_KEY','').strip()
+    return '' if key.lower().startswith('service.') else key
+
+
+def local_voice_test(request:Request):
+    # Explicitly opted-in localhost testing does not certify the audio protocol.
+    return (os.getenv('GISOO_LOCAL_TEST_MODE')=='true'
+            and request.client is not None
+            and request.client.host in ('127.0.0.1','::1')
+            and request.url.hostname in ('localhost','127.0.0.1','::1'))
+
+
 @app.middleware('http')
 async def bounds(request:Request,call_next):
     if request.method in ('POST','PUT','PATCH'):
@@ -58,8 +86,11 @@ async def bounds(request:Request,call_next):
     response=await call_next(request)
     response.set_cookie('torob_session',user,httponly=True,samesite='strict',secure=os.getenv('COOKIE_SECURE')=='true',max_age=3600)
     response.headers['X-Content-Type-Options']='nosniff'
-    response.headers['Content-Security-Policy']=f"default-src 'self'; script-src 'self'; style-src 'self' 'nonce-{request.state.style_nonce}'; connect-src 'self'; media-src 'self' blob:; object-src 'none'; frame-ancestors 'none'"
-    response.headers['Referrer-Policy']='no-referrer'
+    map_sources=' https://*.neshan.org' if map_api_key() else ''
+    map_style_attrs=("; style-src-attr 'unsafe-hashes' "+' '.join(f"'{h}'" for h in NESHAN_STYLE_HASHES)) if map_sources else ''
+    response.headers['Content-Security-Policy']=f"default-src 'self'; script-src 'self'; style-src 'self' 'nonce-{request.state.style_nonce}'{map_style_attrs}; connect-src 'self'{map_sources}; img-src 'self' data: blob: https://image.torob.com{map_sources}; media-src 'self' blob:; object-src 'none'; frame-ancestors 'none'"
+    # Restricted map keys need the site origin, never the full page URL.
+    response.headers['Referrer-Policy']='strict-origin-when-cross-origin' if map_sources else 'no-referrer'
     response.headers['Cache-Control']='no-store'
     return response
 
@@ -80,6 +111,7 @@ def owned(session_id,user):
 
 def cleanup():
     now=time.monotonic()
+    shopping_assistant.cleanup()
     for sid in list(calls):
         c=calls[sid]['call']
         if c.state=='created' and now-c.created>120:
@@ -103,8 +135,23 @@ def health(): return {'status':'ok','products':catalog.filters()['products'],'of
 
 @app.get('/api/config')
 def config(request:Request):
-    return {'csrf_token':token(request.state.user),'call_configured':not configuration(),'call_missing':configuration(),
+    missing=configuration(allow_local_test=local_voice_test(request))
+    return {'csrf_token':token(request.state.user),'call_configured':not missing,'call_missing':missing,
+            'map_configured':bool(map_api_key()),
+            'chat_configured':not chat_missing_configuration(),'chat_missing':chat_missing_configuration(),
+            'routing_configured':bool(os.getenv('NESHAN_ROUTING_API_KEY','').strip()),
+            'travel_modes':list(shopping_assistant.modes),
             'storage':'development_memory','retention_seconds':3600,'coverage':catalog.filters()}
+
+
+@app.get('/api/maps/config')
+def maps_config():
+    if os.getenv('NESHAN_MAP_API_KEY','').strip().lower().startswith('service.'):
+        raise HTTPException(503,'نقشه فعلاً در دسترس نیست. لطفاً کمی بعد دوباره تلاش کنید.')
+    key=map_api_key()
+    if not key: raise HTTPException(503,'نقشه فعلاً در دسترس نیست. لطفاً کمی بعد دوباره تلاش کنید.')
+    # Only requested after the user's map button click; the SDK needs this public key.
+    return {'api_key':key}
 
 
 @app.get('/api/catalog/filters')
@@ -113,6 +160,30 @@ def filters(): return catalog.filters()
 
 @app.post('/api/chat',dependencies=[Depends(write_access)])
 def chat(body:Intent): return catalog.search(body)
+
+
+@app.post('/api/conversations',dependencies=[Depends(write_access)])
+def create_conversation(request:Request):
+    try: return shopping_assistant.create(request.state.user)
+    except AssistantError as error: raise HTTPException(error.status,error.detail) from None
+
+
+@app.get('/api/conversations/{conversation_id}')
+def read_conversation(conversation_id:str,request:Request):
+    try: return shopping_assistant.view(shopping_assistant.owned(conversation_id,request.state.user))
+    except AssistantError as error: raise HTTPException(error.status,error.detail) from None
+
+
+@app.delete('/api/conversations/{conversation_id}',dependencies=[Depends(write_access)])
+def delete_conversation(conversation_id:str,request:Request):
+    try: return shopping_assistant.delete(conversation_id,request.state.user)
+    except AssistantError as error: raise HTTPException(error.status,error.detail) from None
+
+
+@app.post('/api/conversations/{conversation_id}/turns',dependencies=[Depends(write_access)])
+async def conversation_turn(conversation_id:str,body:TurnRequest,request:Request):
+    try: return await shopping_assistant.turn(conversation_id,request.state.user,body)
+    except AssistantError as error: raise HTTPException(error.status,error.detail) from None
 
 
 @app.post('/api/compare',dependencies=[Depends(write_access)])
@@ -157,7 +228,7 @@ def create_call(body:CallRequest,request:Request):
     if not p or not s or p.store_id!=s.id or (p.product_id or p.id)!=body.product.id: raise HTTPException(422,'ارتباط معتبر محصول و فروشگاه موجود نیست')
     if p.name!=body.product.name or p.attributes!=body.product.attributes or s.name!=body.store.name:
         raise HTTPException(422,'اطلاعات کارت با دادهٔ مرجع تطابق ندارد')
-    missing=configuration()
+    missing=configuration(allow_local_test=local_voice_test(request))
     if missing: raise HTTPException(503,{'state':'unconfigured','missing':missing})
     if len(calls)>=50 or sum(v['call'].state!='finalized' for v in calls.values())>=3 or any(v['owner']==request.state.user and v['call'].state!='finalized' for v in calls.values()):
         raise HTTPException(429,'ظرفیت جلسه تکمیل است؛ جلسهٔ قبلی را پایان دهید')

@@ -324,8 +324,8 @@ export function FeedbackDialog({
             <Alert>
               <ShieldCheck />
               <AlertDescription>
-                نگهداری فقط در حافظهٔ توسعه، حدود یک ساعت و تا راه‌اندازی مجدد
-                است. می‌توانید بازخوردتان را حذف کنید.
+                بازخورد شما تا حدود یک ساعت نگهداری می‌شود و هر زمان بخواهید
+                می‌توانید آن را حذف کنید.
               </AlertDescription>
             </Alert>
             <div id="feedback-status" role="status">
@@ -370,14 +370,14 @@ const reasons: Record<string, string> = {
   disconnected: "قطع اتصال",
 };
 const extractionLabels: Record<string, string> = {
-  complete: "JSON و شواهد تأیید شد",
+  complete: "نتیجه تأیید شد",
   not_requested: "انجام نشده",
-  unconfigured: "پیکربندی نشده",
-  error: "خطای سرویس استخراج",
-  invalid: "خروجی نامعتبر؛ اطلاعات حدس زده نشده است",
+  unconfigured: "فعلاً در دسترس نیست",
+  error: "دریافت نتیجه انجام نشد",
+  invalid: "نتیجه قابل تأیید نیست",
   skipped_incomplete: "انجام نشد؛ متن ناقص",
   skipped_abnormal: "انجام نشد؛ پایان غیرعادی",
-  pending: "در حال استخراج",
+  pending: "در حال آماده‌سازی نتیجه",
 };
 
 export function CallDialog({
@@ -479,15 +479,14 @@ export function CallDialog({
           <Alert>
             <AlertTitle>دموی صوتی هنوز آماده نیست</AlertTitle>
             <AlertDescription>
-              تنظیمات سرویس تماس باید تکمیل و بررسی شود. جست‌وجو و مقایسهٔ
-              محصولات در دسترس است.
+              گفت‌وگوی صوتی فعلاً در دسترس نیست. می‌توانید جست‌وجو و مقایسهٔ
+              محصولات را ادامه دهید.
             </AlertDescription>
           </Alert>
         )}
         <p className="field-note">
-          صوت در برنامه ذخیره نمی‌شود. فقط متن کامل پس از پایان برای استخراج
-          نتیجه به BoxAPI ارسال می‌شود؛ متن و نتیجه حدود یک ساعت در حافظهٔ توسعه
-          می‌مانند.
+          صدا ذخیره نمی‌شود. نتیجه از متن کامل مکالمه تهیه می‌شود؛ متن و نتیجه
+          تا حدود یک ساعت نگهداری می‌شوند.
         </p>
         <div className="flex flex-wrap gap-3">
           <Button
@@ -549,7 +548,7 @@ export function CallDialog({
                   </div>
                 </div>
                 <p>
-                  استخراج نتیجه:{" "}
+                  وضعیت نتیجه:{" "}
                   {extractionLabels[result.extraction_status] || "نامشخص"}
                 </p>
                 <p className="field-note">
@@ -559,26 +558,13 @@ export function CallDialog({
                     .map((q) => (q === "price" ? "قیمت" : "موجودی"))
                     .join("، ") || "ندارد"}
                 </p>
-                {result.extraction_usage.total_tokens != null && (
-                  <p className="field-note">
-                    توکن گزارش‌شده: {fa(result.extraction_usage.total_tokens)}
-                  </p>
-                )}
-                {result.extraction_usage.reported_cost != null && (
-                  <p className="field-note">
-                    هزینهٔ گزارش‌شده: {result.extraction_usage.reported_cost}{" "}
-                    {result.extraction_usage.reported_cost_currency ||
-                      "(واحد اعلام نشده)"}
-                  </p>
-                )}
                 {result.diagnostics.includes(
                   "qwen_context_truncation_unsupported",
                 ) && (
                   <Alert>
                     <Info />
                     <AlertDescription>
-                      مدل Qwen پس از وقفه حافظهٔ پاسخ را اصلاح نمی‌کند؛ ادامهٔ
-                      مکالمه متوقف و نتیجه ناقص ثبت شد.
+                      مکالمه قطع شد و متن کامل نیست؛ نتیجه قابل تأیید نیست.
                     </AlertDescription>
                   </Alert>
                 )}

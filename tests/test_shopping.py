@@ -71,3 +71,47 @@ def test_consent_and_sanitize():
 
 def test_request_validation():
     with pytest.raises(ValidationError):CallRequest(request_id='r',store={'id':'s','name':'s'},product={'id':'p','name':'p'},questions=['price','price'])
+
+
+@pytest.mark.parametrize('location',[
+    None,'null',[],{}, {'latitude':35.7},{'longitude':51.4},
+    {'latitude':'bad','longitude':51.4},{'latitude':float('nan'),'longitude':51.4},
+    {'latitude':35.7,'longitude':float('inf')},{'latitude':-91,'longitude':51.4},
+    {'latitude':35.7,'longitude':181},{'latitude':True,'longitude':51.4},
+    {'lat':35.7,'lon':51.4},
+])
+def test_invalid_optional_store_facts_preserve_json_identity(dataset,location):
+    path,data=dataset
+    data['stores'][0].update(location=location,address={'invalid':'object'},location_label='x'*201)
+    path.write_text(json.dumps(data),encoding='utf-8')
+    before=path.read_bytes()
+    c=Catalog(str(path))
+    assert len(c.stores)==1
+    product=c.search(Intent(query='سونی'))['items'][0]
+    assert product['store']['id']=='s1' and product['call_eligible']
+    assert product['store']['location'] is None and product['store']['address'] is None
+    assert product['store']['location_label'] is None
+    assert path.read_bytes()==before
+
+
+def test_valid_json_store_location_and_optional_text(dataset):
+    path,data=dataset
+    data['stores'][0].update(location={'latitude':'35.71','longitude':'51.42'},
+        address='  خیابان\x00 اول\n پلاک ۲  ',location_label='مرکز\u200cشهر')
+    path.write_text(json.dumps(data),encoding='utf-8')
+    c=Catalog(str(path))
+    store=c.search(Intent(query='سونی'))['items'][0]['store']
+    assert store['location']=={'latitude':35.71,'longitude':51.42}
+    assert store['address']=='خیابان اول پلاک ۲'
+    assert store['location_label']=='مرکز\u200cشهر'
+    assert all(p['store']==store for p in c.compare(['p0','p1'])['items'])
+
+
+@pytest.mark.parametrize('address',[None,'','   ','null',' NULL ','x'*1001,True,34])
+def test_unknown_optional_store_address(dataset,address):
+    path,data=dataset
+    data['stores'][0]['address']=address
+    path.write_text(json.dumps(data),encoding='utf-8')
+    c=Catalog(str(path))
+    assert c.stores['s1'].address is None
+    assert len(c.products)==3

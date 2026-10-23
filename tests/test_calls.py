@@ -5,6 +5,39 @@ from app.models import CallRequest,Segment
 from app.calls import Call,GisooAdapter,extract,configuration,session_update
 
 
+@pytest.fixture(autouse=True)
+def default_turn_taking(monkeypatch):
+    monkeypatch.setenv('GISOO_TURN_TAKING','full_duplex')
+
+
+def test_half_duplex_waits_for_audio_completion_and_playback(monkeypatch):
+    monkeypatch.setenv('GISOO_TURN_TAKING','half_duplex')
+    async def scenario():
+        c=Call(request());b=Browser();a=GisooAdapter(c,b);a.provider=Provider()
+        a.ready=True;a.pending_response=True;c.generation_count=1
+        await a.event({'type':'response.output_item.added','response_id':'r','item':{'id':'a','role':'assistant'}})
+        await a.event({'type':'response.output_audio.delta','response_id':'r','delta':'AAAAAA=='})
+        await a.barge_in()
+        assert not c.interrupted and not c.stop.is_set()
+        await a.event({'type':'response.done','response':{'status':'completed','id':'r'}})
+        assert not a.listening
+        await a.event({'type':'response.output_audio.done','response_id':'r'})
+        assert not a.listening  # Generation is complete, but playback isn't.
+        class Input(Browser):
+            async def iter_text(self):
+                yield json.dumps({'type':'audio','audio':'AAAAAA=='})
+                assert not any(e['type']=='input_audio_buffer.append' for e in a.provider.sent)
+                yield json.dumps({'type':'played','seq':1,'epoch':0})
+                assert a.listening
+                yield json.dumps({'type':'audio','audio':'AAAAAA=='})
+                yield json.dumps({'type':'end'})
+        a.browser=Input()
+        await a.browser_loop()
+        assert sum(e['type']=='input_audio_buffer.append' for e in a.provider.sent)==1
+        assert {'type':'listening','enabled':True} in a.browser.sent
+    asyncio.run(scenario())
+
+
 def request(): return CallRequest(request_id='r',store={'id':'s','name':'store'},product={'id':'p','name':'product'})
 
 
@@ -14,6 +47,15 @@ def complete_call():
     agent=c.segment('a','agent');agent.text='دستیار هوش مصنوعی ترب هستم';agent.complete=True;agent.response_id='r1'
     c.order_known.update(['a','b']);c.chunks[1]={'response_id':'r1','epoch':0};c.audio_done.add('r1');c.ack(1,0)
     return c
+
+
+def test_startup_command_is_an_order_anchor_not_seller_transcript():
+    c=complete_call()
+    c.context_items.add('server-setup')
+    c.segments['a'].previous_item_id='server-setup'
+    result=c.finalize('manual_end')
+    assert result.transcript_complete
+    assert {s.item_id for s in result.transcript}=={'a','b'}
 
 
 def test_order_not_arrival(monkeypatch):
@@ -81,6 +123,11 @@ def test_ready_first_and_question_cap(monkeypatch):
         await a.event({'type':'session.created'})
         assert c.generation_count==0 and a.provider.sent[0]['type']=='session.update'
         await a.event({'type':'session.updated'})
+        assert c.generation_count==0 and not b.sent
+        setup=a.provider.sent[-1]['item']
+        assert setup['role']=='user' and setup['content'][0]['type']=='input_text'
+        await a.event({'type':'conversation.item.added','previous_item_id':None,'item':{'id':'provider-assigned-setup','role':'user'}})
+        assert not c.segments and 'provider-assigned-setup' in c.context_items
         assert c.generation_count==1 and b.sent[0]['type']=='ready'
         for i in range(6):
             await a.event({'type':'response.done','response':{'status':'completed','id':str(i)}})
@@ -184,6 +231,7 @@ def test_mock_end_to_end_pcm_relay(monkeypatch):
             async def send(self,raw):
                 e=json.loads(raw);received.append(e)
                 if e['type']=='session.update':await server_queue.put({'type':'session.updated'})
+                elif e['type']=='conversation.item.create':await server_queue.put({'type':'conversation.item.added','previous_item_id':None,'item':e['item']})
                 elif e['type']=='response.create':
                     for event in [
                         {'type':'conversation.item.added','previous_item_id':None,'item':{'id':'a','role':'assistant'}},

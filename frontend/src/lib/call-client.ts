@@ -23,6 +23,9 @@ export class CallClient {
   private epoch = 0;
   private suppressed = false;
   private streaming = false;
+  private halfDuplex = false;
+  private listening = true;
+  private listeningTimer: ReturnType<typeof setTimeout> | undefined;
   private disposed = false;
   private finalized = false;
   private id: string | null = null;
@@ -48,6 +51,8 @@ export class CallClient {
     this.nextTime = this.ctx?.currentTime ?? 0;
   }
   private stopCapture() {
+    clearTimeout(this.listeningTimer);
+    this.listening = false;
     this.streaming = false;
     this.capture?.disconnect();
     this.capture = null;
@@ -101,14 +106,17 @@ export class CallClient {
     if (this.disposed) return;
     if (event.type === "ready") {
       if (!this.ctx || !this.mic) return;
-      this.events.status("دمو فعال است؛ شما نقش فروشنده را دارید.");
+      this.halfDuplex = event.turn_taking === "half_duplex";
+      this.listening = !this.halfDuplex;
+      for (const track of this.mic.getAudioTracks()) track.enabled = this.listening;
+      this.events.status(this.halfDuplex ? "نوبت دستیار است؛ پس از پایان پاسخ صحبت کنید." : "دمو فعال است؛ شما نقش فروشنده را دارید.");
       const input = this.ctx.createMediaStreamSource(this.mic);
       this.capture = new AudioWorkletNode(this.ctx, "pcm-capture");
       this.capture.port.onmessage = ({
         data,
       }: MessageEvent<{ pcm: ArrayBuffer; rms: number }>) => {
-        if (!this.streaming) return;
-        if (!this.suppressed && this.sources.size && data.rms > 0.06) {
+        if (!this.streaming || !this.listening) return;
+        if (!this.halfDuplex && !this.suppressed && this.sources.size && data.rms > 0.06) {
           this.stopPlayback();
           this.suppressed = true;
           this.send({ type: "barge_in" });
@@ -125,6 +133,19 @@ export class CallClient {
       };
       input.connect(this.capture);
       this.capture.connect(this.ctx.destination);
+    } else if (event.type === "listening" && this.halfDuplex) {
+      clearTimeout(this.listeningTimer);
+      this.listening = false;
+      for (const track of this.mic?.getAudioTracks() || []) track.enabled = false;
+      if (event.enabled === true) {
+        // Let the last speaker frame leave the device before enabling capture.
+        this.listeningTimer = setTimeout(() => {
+          if (this.disposed || !this.streaming || !this.mic) return;
+          this.listening = true;
+          for (const track of this.mic.getAudioTracks()) track.enabled = true;
+          this.events.status("نوبت شماست؛ حالا صحبت کنید.");
+        }, 200);
+      } else this.events.status("نوبت دستیار است؛ پس از پایان پاسخ صحبت کنید.");
     } else if (event.type === "finalizing") {
       this.stopCapture();
       this.events.status("در حال نهایی‌سازی متن و نتیجه…");
