@@ -12,6 +12,10 @@ interface AudioEvent {
   epoch: number;
 }
 
+// Provider generation can outrun real-time playback. Bound memory by the
+// maximum demo duration rather than treating a normal introduction as failure.
+const MAX_QUEUED_AUDIO_SECONDS = 120;
+
 /** The existing PCM relay, isolated from the UI. Audio only lives in memory. */
 export class CallClient {
   private ws: WebSocket | null = null;
@@ -28,6 +32,7 @@ export class CallClient {
   private listeningTimer: ReturnType<typeof setTimeout> | undefined;
   private disposed = false;
   private finalized = false;
+  private playbackFailure: string | null = null;
   private id: string | null = null;
 
   constructor(
@@ -78,7 +83,7 @@ export class CallClient {
     const samples = buffer.getChannelData(0);
     for (let i = 0; i < samples.length; i++)
       samples[i] = view.getInt16(i * 2, true) / 32768;
-    if (this.nextTime - this.ctx.currentTime > 10)
+    if (Math.max(0, this.nextTime - this.ctx.currentTime) + buffer.duration > MAX_QUEUED_AUDIO_SECONDS)
       throw new Error("صف پخش بیش از حد مجاز است");
     const source = this.ctx.createBufferSource();
     source.buffer = buffer;
@@ -88,6 +93,7 @@ export class CallClient {
     this.nextTime = start + buffer.duration;
     source.onended = () => {
       this.sources.delete(source);
+      source.disconnect();
       this.send({ type: "played", seq: event.seq, epoch: event.epoch });
     };
     source.start(start);
@@ -167,6 +173,7 @@ export class CallClient {
       this.finalized = true;
       this.cleanup();
       this.events.result(event.result as CallResult);
+      if (this.playbackFailure) this.events.status(this.playbackFailure);
       this.ws?.close();
     }
   }
@@ -217,6 +224,7 @@ export class CallClient {
       );
       this.ws.onmessage = ({ data }) => {
         void this.handle(JSON.parse(data)).catch((error: Error) => {
+          this.playbackFailure = error.message;
           this.events.status(error.message);
           this.send({ type: "playback_error" });
           this.cleanup();
@@ -234,6 +242,7 @@ export class CallClient {
               if (!this.disposed) {
                 this.finalized = true;
                 this.events.result(result);
+                if (this.playbackFailure) this.events.status(this.playbackFailure);
               }
             })
             .catch((error: Error) => {

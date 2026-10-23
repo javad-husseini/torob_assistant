@@ -64,7 +64,15 @@ export function InlineInquiry({
         setSegments(value.transcript);
         onBusyChange(false);
         setStatus(
-          value.reason === "error" && value.transcript.length === 0
+          value.reason === "timeout"
+            ? "مهلت دمو تمام شد. متن کامل مکالمه تأیید نشده است."
+            : value.reason === "disconnected"
+            ? "اتصال صوتی قطع شد؛ مکالمه کامل نشده است."
+            : value.diagnostics.includes("playback_failed")
+            ? "پخش صدا در مرورگر متوقف شد؛ مکالمه کامل نشده است."
+            : value.diagnostics.includes("provider_error")
+            ? "سرویس صوتی هنگام مکالمه خطا داد؛ مکالمه کامل نشده است."
+            : value.reason === "error" && value.transcript.length === 0
             ? "اتصال برقرار نشد و مکالمه شروع نشد. لطفاً دوباره تلاش کنید."
             : value.transcript_complete
             ? "دمو پایان یافت؛ متن دوطرفه تأیید شد."

@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, useState, type ReactNode } from "react";
 import {
   ArrowLeft,
   CalendarDays,
@@ -51,6 +51,23 @@ import type {
   TravelMode,
 } from "@/lib/assistant-api";
 
+function ProductDetails({ product, children }: { product: Product; children?: ReactNode }) {
+  return (
+    <details className="compact-details">
+      <summary>مشاهده جزئیات</summary>
+      <div className="compact-details-body">
+        <strong>{product.name}</strong>
+        <dl>{Object.entries(product.attributes).map(([key, value]) => (
+          <div key={key}><dt>{key}</dt><dd>{value}</dd></div>
+        ))}</dl>
+        {product.why && <p>{product.why}</p>}
+        <p className="record-date"><CalendarDays />{product.updated_at ? new Date(product.updated_at).toLocaleDateString("fa-IR") : "تاریخ ثبت نامشخص"}</p>
+        {children}
+      </div>
+    </details>
+  );
+}
+
 function ProductChoiceCard({
   product,
   disabled,
@@ -68,13 +85,17 @@ function ProductChoiceCard({
     >
       <CardHeader>
         <Badge variant="secondary">{product.category}</Badge>
-        <ProductImage product={product} />
-        <CardTitle>{product.name}</CardTitle>
-        <CardDescription>
+        <div className="compact-product-heading">
+          <ProductImage product={product} />
+          <div className="compact-product-copy">
+            <CardTitle title={product.name}>{product.name}</CardTitle>
+            <CardDescription>
           {product.offer_count != null
             ? `${fa(product.offer_count)} پیشنهاد فروش`
             : "مشخصات محصول"}
-        </CardDescription>
+            </CardDescription>
+          </div>
+        </div>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col gap-3">
         <p className="product-price">
@@ -89,7 +110,7 @@ function ProductChoiceCard({
         )}
         <div className="product-attributes">
           {Object.entries(product.attributes)
-            .slice(0, 3)
+            .slice(0, 2)
             .map(([key, value]) => (
               <div key={key}>
                 <span>{key}</span>
@@ -99,6 +120,7 @@ function ProductChoiceCard({
         </div>
       </CardContent>
       <CardFooter>
+        <ProductDetails product={product} />
         <Button className="w-full" disabled={disabled} onClick={onChoose}>
           انتخاب این محصول
           <ArrowLeft data-icon="inline-end" />
@@ -128,6 +150,7 @@ function StoreOfferCard({
   onFeedback: () => void;
 }) {
   const id = useId();
+  const [mapOpen, setMapOpen] = useState(false);
   const modeLabel =
     product.route?.mode === "pedestrian"
       ? "پیاده"
@@ -158,8 +181,14 @@ function StoreOfferCard({
               انتخاب برای مقایسه
             </label>
           </div>
-          <CardTitle>{product.store?.name || "فروشگاه نامشخص"}</CardTitle>
-          <CardDescription>{product.name}</CardDescription>
+          <div className="compact-product-heading">
+            <ProductImage product={product} />
+            <div className="compact-product-copy">
+              <CardTitle title={product.name}>{product.name}</CardTitle>
+              <CardDescription className="compact-store-name"><Store />{product.store?.name || "فروشگاه نامشخص"}</CardDescription>
+              <p className="compact-attribute-summary">{Object.entries(product.attributes).slice(0, 2).map(([key, value]) => `${key}: ${value}`).join(" · ")}</p>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="flex flex-1 flex-col gap-3">
           <p className="product-price">
@@ -179,34 +208,23 @@ function StoreOfferCard({
             </span>
           </div>
           <p className="field-note">موجودی: {stockLabel[product.stock]}</p>
-          <span className="record-date">
-            <CalendarDays />
-            {product.updated_at
-              ? new Date(product.updated_at).toLocaleDateString("fa-IR")
-              : "تاریخ ثبت نامشخص"}
-          </span>
-          {product.why && <p className="field-note">{product.why}</p>}
         </CardContent>
-        <CardFooter className="flex-col gap-2">
+        <StoreLocationCard store={product.store} mapsConfigured={config.map_configured} embedded open={mapOpen} onOpenChange={setMapOpen} />
+        <CardFooter className="compact-offer-actions">
+          <ProductDetails product={product}>
+            <Button variant="ghost" size="sm" onClick={onFeedback}><MessageSquare data-icon="inline-start" />ثبت تجربهٔ بازدید یا خرید</Button>
+          </ProductDetails>
+          <Button variant="outline" disabled={!config.map_configured || !product.store?.location} onClick={() => setMapOpen(true)}>مسیریابی</Button>
           <Button
             variant="outline"
-            className="w-full"
+            className="compact-inquiry-action"
             disabled={disabled || !product.call_eligible}
             onClick={onInquiry}
           >
             <Phone data-icon="inline-start" />
             استعلام از این فروشگاه
           </Button>
-          <Button variant="ghost" size="sm" onClick={onFeedback}>
-            <MessageSquare data-icon="inline-start" />
-            ثبت تجربهٔ بازدید یا خرید
-          </Button>
         </CardFooter>
-      <StoreLocationCard
-        store={product.store}
-        mapsConfigured={config.map_configured}
-        embedded
-      />
       </Card>
     </div>
   );

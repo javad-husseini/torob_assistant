@@ -16,12 +16,19 @@ export function StoreLocationCard({
   store,
   mapsConfigured,
   embedded = false,
+  open,
+  onOpenChange,
 }: {
   store: Product["store"];
   mapsConfigured: boolean;
   embedded?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const [fullMap, setFullMap] = useState(false);
+  const expanded = open ?? internalOpen;
+  const setExpanded = (next: boolean) => { setInternalOpen(next); onOpenChange?.(next); };
   const detailsId = useId();
   const location = store?.location;
   const validLocation =
@@ -31,7 +38,7 @@ export function StoreLocationCard({
     Math.abs(location.latitude) <= 90 &&
     Math.abs(location.longitude) <= 180;
   const canLoadMap = Boolean(store && validLocation && mapsConfigured);
-  const toggle = () => setExpanded((open) => !open);
+  const toggle = () => { setExpanded(!expanded); setFullMap(false); };
   const Container = embedded ? "section" : Card;
 
   return (
@@ -40,8 +47,9 @@ export function StoreLocationCard({
       data-testid="store-location-card"
       data-store-id={store?.id}
       data-open={expanded}
+      data-full-map={fullMap}
     >
-      <CardHeader>
+      {!embedded && <CardHeader>
         <div className="store-location-heading">
           <span className="store-location-emblem" aria-hidden="true">
             <MapPinned />
@@ -53,7 +61,7 @@ export function StoreLocationCard({
             </CardDescription>
           </div>
         </div>
-      </CardHeader>
+      </CardHeader>}
       <CardContent id={detailsId} className="store-location-details">
         {store?.location_label && (
           <p className="store-location-label">{store.location_label}</p>
@@ -69,10 +77,15 @@ export function StoreLocationCard({
           <p className="store-location-note">
             نقشه در حال حاضر در دسترس نیست.
           </p>
-        ) : (
+        ) : !embedded ? (
           <p className="store-location-note">
             برای دیدن موقعیت فروشگاه، نقشه را باز کنید.
           </p>
+        ) : null}
+        {embedded && !expanded && validLocation && (
+          <div className="compact-map-preview" aria-label="پیش‌نمایش موقعیت فروشگاه">
+            <MapPin aria-hidden="true" /><span>موقعیت فروشگاه</span>
+          </div>
         )}
         {expanded && canLoadMap && store && location && (
           <StoreMap
@@ -83,6 +96,9 @@ export function StoreLocationCard({
         )}
       </CardContent>
       <CardFooter>
+        {expanded && <Button type="button" variant="outline" onClick={() => setFullMap(value => !value)} aria-pressed={fullMap}>
+          {fullMap ? "نقشه کوچک" : "نقشه کامل"}
+        </Button>}
         <Button
           type="button"
           variant="outline"

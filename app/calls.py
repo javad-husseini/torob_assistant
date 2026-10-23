@@ -1,5 +1,5 @@
 from __future__ import annotations
-import asyncio, base64, json, os, re, time
+import asyncio, base64, json, os, re, time, logging
 from dataclasses import dataclass, field
 from decimal import Decimal
 from urllib.parse import urlencode
@@ -319,6 +319,9 @@ class GisooAdapter:
                 self.seller_waiting=False;await self.respond()
             await self.update_listening()
         elif kind=='error':
+            code=e.get('error',{}).get('code')
+            if isinstance(code,str) and re.fullmatch(r'[a-zA-Z0-9_]{1,80}',code):
+                c.diagnostics.append('provider_code:'+code)
             c.diagnostics.append('provider_error');c.reason='error';c.stop.set()
 
     async def browser_loop(self):
@@ -386,6 +389,8 @@ class GisooAdapter:
         finally:
             for task in tasks: task.cancel()
             if tasks: await asyncio.gather(*tasks,return_exceptions=True)
+            logging.getLogger(__name__).info('Voice session ended: reason=%s elapsed=%.1fs generations=%s chunks=%s played=%s diagnostics=%s',
+                c.reason,time.monotonic()-c.created,c.generation_count,len(c.chunks),len(c.played),c.diagnostics[:20])
             c.finalize(c.reason or 'error')
             from .extraction import extract_result
             await extract_result(c)

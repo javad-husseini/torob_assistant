@@ -39,4 +39,30 @@ assert.equal(track.enabled,false);
 client.capture.port.onmessage(frame);
 assert.equal(sent.filter(e=>e.type==='audio').length,1);
 client.cleanup();
+
+// Realtime output can arrive much faster than playback. A normal spoken
+// introduction exceeding ten seconds must remain queued, not end the call.
+const playback = new CallClient(async()=>({}), {status(){},active(){},transcript(){},result(){}});
+const sources = [];
+const acknowledgements = [];
+playback.ctx = {
+  currentTime:0, destination:{}, close:()=>Promise.resolve(),
+  createBuffer:(channels,length,rate)=>({duration:length/rate,getChannelData:()=>new Float32Array(length)}),
+  createBufferSource:()=>{
+    const source = {connect(){},disconnect(){},start(time){this.time=time;},stop(){}};
+    sources.push(source); return source;
+  },
+};
+playback.ws = {readyState:1,send:s=>acknowledgements.push(JSON.parse(s))};
+const second = Buffer.alloc(48000).toString('base64');
+for(let seq=1;seq<=24;seq++) await playback.handle({type:'audio',audio:second,seq,epoch:0});
+assert.equal(sources.length,24);
+assert.equal(acknowledgements.length,0, 'Receipt is not proof of playback.');
+for(let i=0;i<sources.length;i++) {
+  if(i) assert.ok(sources[i].time >= sources[i-1].time+1);
+  sources[i].onended();
+}
+assert.equal(acknowledgements.filter(e=>e.type==='played').length,24);
+assert.equal(playback.sources.size,0);
+playback.cleanup();
 console.log('Audio turn checks passed: speaker echo blocked, capture waits for playback, turn transitions and cleanup. No network.');

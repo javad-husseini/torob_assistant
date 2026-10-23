@@ -72,6 +72,7 @@ def desktop_checks(browser):
         expect(page.locator('.chat-stage-nav [aria-current="step"]')).to_contain_text("استعلام")
 
         # Existing consent/purchase/deletion behavior is preserved.
+        cards.first.locator('.compact-details > summary').click()
         cards.first.get_by_role("button", name="ثبت تجربهٔ بازدید یا خرید", exact=True).click()
         page.locator("#feedback-kind").get_by_role("radio", name="پس از خرید").click()
         page.locator("#feedback-text").fill("بازخورد آفلاین مرورگر")

@@ -5,6 +5,19 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Compact shopping scale: dimensions only; brand colors come from theme tokens. */
+:root {
+  --shopping-space: 4px;
+  --shopping-gap: calc(var(--shopping-space) * 3);
+  --shopping-pad: calc(var(--shopping-space) * 3);
+  --shopping-radius: calc(var(--shopping-space) * 4);
+  --shopping-chat-width: 760px;
+  --shopping-card-width: 640px;
+  --shopping-image: 80px;
+  --shopping-map-height: 140px;
+  --shopping-button-height: 40px;
+}
+
 @theme inline {
   --font-heading: var(--font-sans);
   --font-sans: "Vazirmatn Variable", Tahoma, sans-serif;
@@ -1277,4 +1290,112 @@
   .location-picker-map {
     height: 310px;
   }
+}
+
+/* Shared compact dimensions for the chat surface and its existing components. */
+.chat-app { font-size: 14px; }
+.chat-main { width: min(var(--shopping-chat-width), 100%); padding-inline: 12px; }
+.chat-topbar-inner { width: min(var(--shopping-chat-width), 100%); min-height: 56px; padding: 8px 12px; gap: 12px; }
+.chat-brand-mark { width: 32px; height: 32px; border-radius: 8px; }
+.chat-brand-mark svg { width: 20px; height: 20px; }
+.chat-brand strong { font-size: 17px; line-height: 24px; }
+.chat-brand small { font-size: 12px; }
+.chat-stage-nav { padding-block: 8px; }
+.chat-stage-nav ol { gap: 8px; }
+.chat-stage-nav li { padding: 8px; gap: 8px; font-size: 12px; border-radius: 12px; }
+.chat-stage-number { width: 24px; height: 24px; font-size: 12px; }
+.assistant-thread-content { padding: 12px 0 16px; gap: 16px; }
+.chat-avatar { width: 24px; height: 24px; min-width: 24px; border-radius: 8px; }
+.chat-app [data-slot="message-content"] { gap: 8px; }
+.chat-app .chat-message-text { font-size: 14px; line-height: 1.8; padding: 12px; max-width: 85%; border-radius: 12px; }
+.chat-app [data-slot="card"] { --card-spacing: var(--shopping-pad); gap: var(--shopping-gap); border-radius: var(--shopping-radius); font-size: 14px; }
+.chat-app [data-slot="card-title"] { min-height: 0; font-size: 16px; line-height: 1.6; }
+.chat-app [data-slot="card-description"] { min-height: 0; font-size: 12px; line-height: 1.7; }
+.chat-app [data-slot="button"] { min-height: var(--shopping-button-height); height: auto; padding-block: 8px; gap: 4px; font-size: 13px; line-height: 20px; }
+.chat-app [data-slot="button"] svg { width: 16px; height: 16px; }
+.chat-app [data-slot="badge"] { font-size: 12px; padding: 4px 8px; gap: 4px; width: fit-content; }
+.chat-app .field-note, .chat-app .record-date, .chat-app .historical-price { font-size: 12px; line-height: 1.7; }
+.chat-app .product-price { font-size: 17px; font-weight: 700; line-height: 1.6; }
+.chat-carousel { gap: var(--shopping-gap); padding-block: 4px 12px; align-items: start; }
+.chat-carousel > * { flex: 0 0 min(320px, 100%); }
+.chat-carousel > .chat-store-offer { flex-basis: min(var(--shopping-card-width), 100%); max-width: 100%; }
+.chat-product-card { width: 100%; }
+.compact-product-heading { display: flex; align-items: start; gap: var(--shopping-gap); min-width: 0; }
+.compact-product-copy { flex: 1; min-width: 0; }
+.chat-app .chat-product-placeholder { flex: 0 0 var(--shopping-image); width: var(--shopping-image); height: var(--shopping-image); border-radius: 12px; padding: 4px; gap: 4px; }
+.chat-product-placeholder svg { width: 24px; height: 24px; }
+.chat-product-placeholder span { font-size: 12px; text-align: center; line-height: 1.5; }
+.compact-product-heading [data-slot="card-title"], .compact-attribute-summary { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+.compact-attribute-summary { margin-top: 4px; font-size: 12px; line-height: 1.7; color: var(--muted-foreground); }
+.compact-store-name { display: flex; align-items: start; gap: 4px; margin-top: 4px; color: var(--foreground); }
+.compact-store-name svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px; }
+.chat-app .product-attributes { gap: 4px; }
+.chat-app .product-attributes > div { gap: 8px; font-size: 12px; line-height: 1.7; }
+.chat-product-card > [data-slot="card-footer"] { display: flex; flex-wrap: wrap; align-items: start; gap: 8px; }
+.chat-product-card > [data-slot="card-footer"] > [data-slot="button"] { flex: 1; width: auto; }
+.compact-details { min-width: 0; font-size: 13px; }
+.compact-details > summary { display: flex; align-items: center; justify-content: center; cursor: pointer; min-height: var(--shopping-button-height); padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; line-height: 20px; }
+.compact-details > summary:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.compact-details[open] { flex-basis: 100%; }
+.compact-details-body { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; overflow-wrap: anywhere; }
+.compact-details-body dl { display: flex; flex-direction: column; gap: 4px; }
+.compact-details-body dl > div { display: grid; grid-template-columns: minmax(64px, 1fr) minmax(0, 2fr); gap: 8px; }
+.compact-details-body dt { color: var(--muted-foreground); }
+.compact-details-body dd { margin: 0; }
+.chat-store-offer { display: block; }
+.chat-offer-card { width: 100%; }
+.chat-app .chat-offer-card > [data-slot="card-content"] { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-content: start; }
+.chat-offer-card > [data-slot="card-content"] > .field-note { grid-column: 2; grid-row: 1; align-self: center; }
+.chat-offer-card .historical-price, .chat-offer-card .route-facts { grid-column: 1 / -1; }
+.chat-app .route-facts { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; border-radius: 12px; }
+.chat-app .route-facts strong { font-size: 14px; }
+.chat-app .route-facts span { font-size: 13px; }
+.chat-app .compare-check { min-height: 32px; font-size: 12px; padding-block: 4px; gap: 8px; }
+.store-location-embedded { border-top: 0; padding-block: 0; display: flex; flex-direction: column; gap: 8px; }
+.chat-app .store-location-details { display: flex; gap: 8px; }
+.chat-app .store-location-card.store-location-embedded[data-open="false"] .store-location-details { display: flex; }
+.chat-app .store-location-address { font-size: 13px; line-height: 1.7; }
+.chat-app .store-location-note, .chat-app .store-map-caption { font-size: 12px; line-height: 1.7; }
+.compact-map-preview { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; height: var(--shopping-map-height); background: var(--muted); border: 1px solid var(--border); border-radius: 12px; font-size: 12px; color: var(--muted-foreground); }
+.compact-map-preview svg { width: 24px; height: 24px; }
+.store-location-embedded .store-map { height: var(--shopping-map-height); border-radius: 12px; }
+.store-location-embedded .store-map-message { min-height: var(--shopping-map-height); padding: 12px; gap: 8px; }
+.store-location-embedded .store-map-caption { margin-top: 4px; }
+.store-location-embedded > [data-slot="card-footer"] { padding-block: 0; background: transparent; border: 0; gap: 8px; flex-wrap: wrap; }
+.store-location-embedded > [data-slot="card-footer"] > [data-slot="button"] { width: auto; flex: 1; }
+.store-location-embedded[data-full-map="true"] .store-map { height: min(60dvh, 480px); }
+.chat-app .compact-offer-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: start; }
+.compact-offer-actions > * { flex: 1 1 auto; }
+.compact-offer-actions .compact-inquiry-action { flex-grow: 2; }
+.inline-comparison [data-slot="table-head"] { min-width: 132px; padding: 8px; font-size: 13px; }
+.inline-comparison [data-slot="table-head"]:first-child { min-width: 88px; }
+.inline-comparison [data-slot="table-cell"] { padding: 8px; font-size: 13px; }
+.chat-app .chat-quick-replies [data-slot="button"] { min-height: 32px; padding: 4px 12px; }
+.chat-composer-wrap { padding-block: 12px max(24px, env(safe-area-inset-bottom)); }
+.chat-app .chat-composer [data-slot="input-group"] { border-color: color-mix(in srgb, var(--foreground) 22%, var(--background)); background: var(--card); box-shadow: 0 4px 16px color-mix(in srgb, var(--foreground) 5%, transparent); }
+.chat-app .chat-composer [data-slot="input-group"]:focus-within { border-color: var(--primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 16%, transparent); }
+.chat-app .chat-composer [data-slot="input-group"] { min-height: 48px; padding-inline: 4px; }
+.chat-app .chat-composer [data-slot="input-group-control"] { min-height: 48px; max-height: 128px; padding: 12px; font-size: 14px; line-height: 24px; }
+.chat-app .chat-composer [data-slot="input-group-addon"] { padding-bottom: 4px; }
+.chat-app .inline-inquiry .conversation { height: auto; min-height: 120px; max-height: 240px; padding: 12px; }
+.chat-app .location-picker { max-width: var(--shopping-card-width); }
+.chat-app .location-picker-map { height: 240px; }
+@media (min-width: 761px) {
+  :root { --shopping-pad: 16px; --shopping-image: 96px; --shopping-map-height: 160px; }
+  .chat-main { padding-inline: 16px; }
+  .chat-topbar-inner { padding-inline: 16px; min-height: 64px; }
+  .chat-avatar { width: 32px; height: 32px; min-width: 32px; }
+  .chat-offer-card { display: grid; grid-template-columns: minmax(0, 1fr) 248px; align-items: start; }
+  .chat-offer-card > [data-slot="card-header"] { grid-column: 1; grid-row: 1; }
+  .chat-offer-card > [data-slot="card-content"] { grid-column: 1; grid-row: 2; }
+  .chat-offer-card > [data-slot="card-footer"] { grid-column: 1 / -1; }
+  .chat-offer-card > .store-location-embedded { grid-column: 2; grid-row: 1 / span 2; padding-inline-end: var(--shopping-pad); }
+  .chat-offer-card > .store-location-embedded > [data-slot="card-content"], .chat-offer-card > .store-location-embedded > [data-slot="card-footer"] { padding-inline: 0; }
+}
+@media (max-width: 760px) {
+  .chat-stage-nav li { flex-direction: column; gap: 4px; padding: 4px; font-size: 12px; }
+  .chat-app .chat-message-text { font-size: 13px; }
+  .chat-model-status { display: none; }
+  .chat-brand small { display: none; }
+  .chat-app .chat-topbar-actions [data-slot="button"] { min-width: 40px; }
 }
